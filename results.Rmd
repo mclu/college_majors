@@ -1,0 +1,217 @@
+---
+title: "Introductory Analyses of College Majors Dataset"
+author: "Ming-Chen Lu (mingchlu@umich.edu)"
+date: "`r format.Date(Sys.Date(), '%B %d, %Y')`"
+output: 
+  html_document:
+  toc: yes
+runtime: shiny
+---
+
+## About
+This is short data analysis for application of the Center for Academic Innovation's Data Science Fellowship.  
+The data can be found in FiveThirtyEight College Majors git [repo](https://github.com/fivethirtyeight/data/tree/master/college-majors). I will be using `all-ages.csv` and `recent-grads.csv` data files. For the code and data manipulations please see the corresponding R script at my git [repo](https://github.com/mclu/college_majors). The following analyses include:
+
+- The distribution of unemployment rates among the different major
+categories
+- Trends in college majors among recent graduates
+- Bonus: Mean differences of unemployment rate
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, results = 'asis', message = FALSE)
+
+# Libraries
+library(tidyverse)
+library(data.table)
+library(shiny)
+
+# Read in data
+all_ages = fread("https://github.com/fivethirtyeight/data/raw/master/college-majors/all-ages.csv")
+recent_grad = fread("https://github.com/fivethirtyeight/data/raw/master/college-majors/recent-grads.csv")
+
+```
+
+## Questions
+### A. The distribution of unemployment rates among the different major categories
+
+```{r part_a, fig.cap = cap}
+all_ages %>%
+  # Order by mean of unemployment rate by major category
+  group_by(Major_category) %>%
+  mutate( mean_unemploy = mean(Unemployment_rate) ) %>%
+  arrange(-mean_unemploy) %>%
+  ungroup() %>%
+  mutate( 
+    Major_category = factor(Major_category, levels = unique(Major_category)) 
+    ) %>%
+  # Generate boxplot
+  ggplot( aes(y = Unemployment_rate, x = Major_category) ) +
+  geom_boxplot() +
+  coord_flip() +
+  theme_bw() +
+  ylab("Unemployment Rate") +
+  xlab("Major Category")
+
+
+cap = paste0(
+  "**Figure 1.** *Distribution of unemployment rates among the different",
+  "major categories.* The figure shows that among the different major ",
+  "categories, Agriculture & Natural Resources majors have the lowest ",
+  "average unemployment rate while Arts majors have the highest. Engineering",
+  " majors have the widest range of unemployment rate. It is also worth ",
+  "noting that Interdisciplinary major only has one data point.")
+```
+
+### B. Trends in college majors among recent graduates
+
+To get information about the recent trends of college majors, I extracted the total number of people with majors in `all-ages.csv` and `recent-grads.csv` files and computed the proportion of recent graduates (ages < 28) with majors. The major Food Science had been removed because the variable Total showed NA value. 
+Since there is a total of 173 majors, it's hard to get insightful information form plotting 173 majors altogether. I decided to write a shiny app with two control widgets, the majors in various groups and the proportion of recent graduates with majors. With these two parameters, users can choose the desired major categories and the proportion to see.  <br />  
+
+
+```{r shiny app}
+# R shiny App
+# Define UI for dataset viewer app
+ui <- fluidPage(
+  sidebarLayout(
+    sidebarPanel(
+      # Input: Select major categories to show in the plot
+      checkboxGroupInput("ctg", "Major categories to show:",
+                         unique(all_ages$Major_category), 
+                         selected = unique(all_ages$Major_category)),
+      
+      # Create a line break
+      br(),
+      
+      # Input: Proportion interval with step value
+      sliderInput("prop", "Proportion:",
+                  min = 0, max = 1,
+                  value = 0.5, step = 0.05)
+    ),
+    mainPanel(
+      plotOutput("grad_barplot")  
+    )
+  )
+)
+
+# Define a server for shiny app
+server <- function(input, output) {
+  
+  datainput = reactive({
+    all = all_ages[, .(Major_code, Total)]
+    recent_grad[, .(Major_code, Major, Major_category, Total)] %>%
+      na.omit() %>%
+      merge(all, by = "Major_code", suffixes = c(".grad", ".all")) %>%
+      .[, prop_total := Total.grad / Total.all] %>%
+      .[ prop_total >= input$prop & Major_category %in% input$ctg, 
+         .(Major, Major_category, prop_total)] %>%
+      .[order(-prop_total)]
+  })
+  
+  output$grad_barplot = renderPlot({
+    datainput() %>%
+      arrange(prop_total) %>%
+      mutate( Major = factor(Major, levels = unique(Major)) ) %>%
+      as.data.frame() %>%
+      ggplot( aes_string( x = "Major", y = "prop_total", fill = "Major_category")) +
+      geom_bar( stat = "identity", width = .5) +
+      coord_flip() +
+      ylab('Percentage of recent graduates (ages < 28) in the majors')
+    
+  })
+}
+
+# Run the shiny app
+shinyApp(ui, server)
+```
+
+<br /> 
+
+```{r DT, fig.cap = cap}
+# Data Table
+# Extract key columns from all-ages.csv
+all = all_ages[, .(Major_code, Total)]
+
+# Merge and compute the proportion
+recent = 
+  recent_grad[, .(Major_code, Major, Major_category, Total)] %>%
+  na.omit() %>%
+  merge(all, by = "Major_code", suffixes = c("_grad", "_all")) %>%
+  .[, Proportion := Total_grad / Total_all] %>%
+  .[, .(Major_category, Major, Proportion, Total_grad, Total_all)] %>%
+  .[order(-Proportion)]
+
+DT::datatable( recent  )
+cap = paste0(
+"**Table 1.** *Percents of recent graduates under 28 years old with majors*."
+)
+```
+
+The results show that neuroscience and biomedical engineering majors appear to have experienced a relative boom among recent graduates since they account for over 80% of people with the majors. On the other hand, military technologies major is dropping off in popularity. 
+As for the major category, Biology & Life Science is the most booming one among recent graduates. Surprisingly, while biomedical engineering and materials science, two of the Engineering category, are booming in popularity, other majors in the Engineering category are less popular. This shows that majors' popularity can differ a lot in the same category.
+
+<br />
+
+## Bonus
+### A. Mean differences of unemployment rate
+Followed by the first question, I am also curious to see the differences of unemployment rate between recent graduates and all ages. Hence, I produced the plot and table to examine.
+
+```{r bonus_plot, fig.cap = cap}
+all_unemploy = all_ages %>% select(Major_code, Unemployment_rate)
+diff_unemploy = 
+  recent_grad %>%
+  select(Major_code, Major_category, Unemployment_rate) %>%
+  left_join(all_unemploy, by = "Major_code", suffix = c("_grad", "_all")) %>%
+  mutate( diff = Unemployment_rate_grad - Unemployment_rate_all ) %>%
+  group_by(Major_category) %>%
+  summarize( mean_diff = mean(diff), 
+             sd_diff = sd(diff),
+             lwr = mean_diff - qnorm(.975) * sd_diff,
+             upr = mean_diff + qnorm(.975) * sd_diff,
+             diff_unemploy = sprintf('%3.3f (%3.3f, %3.3f)', 
+                                     mean_diff, lwr, upr)) %>%
+  filter(Major_category != "Interdisciplinary") %>%
+  arrange(mean_diff)
+
+# Plot
+diff_unemploy %>% 
+  ungroup() %>%
+  arrange(-mean_diff) %>%
+  mutate(
+    Major_category = factor(Major_category, levels = unique(Major_category))
+  ) %>%
+  group_by(Major_category) %>%
+  ggplot( aes( y = Major_category, x = mean_diff) ) +
+  geom_point() +
+  geom_errorbarh( aes(xmin = lwr, xmax = upr) ) +
+  theme_bw() +
+  ylab("Major Category") +
+  xlab("Mean differences of unemployment rate between recent graduates and all ages")
+
+cap = paste0(
+  "**Figure 2.** *Mean differences of unemployment rate between recent ",
+  "graduates and all ages.* The figure shows that recent graduates of ",        "Industrial Arts & Consumer Services major category tend to find jobs ",      "easier compared to all ages, while Social Science major category is the ",
+  "opposite."
+)
+
+```
+
+<br />
+
+```{r bonus_DT, fig.cap = cap}
+DT::datatable( 
+  diff_unemploy %>% 
+    transmute(`Major Category` = Major_category, 
+              `Mean Differences` = diff_unemploy )  
+  )
+cap = paste0(
+"**Table 2.** *Mean differences summary.* This table shows the mean ",
+"differences of unemployment rate between recent graduates and all ages ",
+"(with 95% Wald confidence intervals)." 
+)
+```
+<br />
+
+### B. Are the unemployment rate and earnings different between men and women?
+When exploring the data, the differences of majors and career performance among men and women are also interesting to me. In particular, I would like to know if the earnings and unemployment rate are different. If I have more time, I might try to get more detailed data including sex from original sources for `all-ages.csv`. With detailed information for both `all-ages.csv` and `recent-grads.csv` files, I can conduct tests and display graphically to examine the differences among sex.
+
+
