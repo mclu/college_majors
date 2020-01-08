@@ -1,6 +1,6 @@
-# Title
+# Introductory Analyses of College Majors Dataset
 #
-# This script is a short data analysis for application of the Center for 
+# This script is short data analysis for application of the Center for 
 # Academic Innovation's Data Science Fellowship.
 #
 # Data: all-ages.csv, recent-grads.csv
@@ -30,7 +30,7 @@ all_ages %>%
   ungroup() %>%
   mutate( 
     Major_category = factor(Major_category, levels = unique(Major_category)) 
-    ) %>%
+  ) %>%
   # Generate boxplot
   ggplot( aes(y = Unemployment_rate, x = Major_category) ) +
   geom_boxplot() +
@@ -48,7 +48,6 @@ cap = paste0(
 # R shiny App: -----------------------------------------------------------------
 # Define UI for dataset viewer app: --------------------------------------------
 ui <- fluidPage(
-  titlePanel("My Shiny App"),
   sidebarLayout(
     sidebarPanel(
       # Input: Select major categories to show in the plot
@@ -98,7 +97,7 @@ server <- function(input, output) {
 }
 
 # Run the shiny app
-shinyApp(ui, server)
+shinyApp(ui, server, options = list(width = "100%", height = 650))
 
 # Data Table: ------------------------------------------------------------------
 # Extract key columns from all-ages.csv
@@ -151,4 +150,4 @@ cap = paste0(
   "graduates and all ages.* The figure shows that recent graduates of ",        "Industrial Arts & Consumer Services major category tend to find jobs ",      "easier compared to all ages, while Social Science major category is the ",
   "opposite."
 )
-  
+

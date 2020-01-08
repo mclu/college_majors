@@ -2,10 +2,7 @@
 title: "Introductory Analyses of College Majors Dataset"
 author: "Ming-Chen Lu (mingchlu@umich.edu)"
 date: "`r format.Date(Sys.Date(), '%B %d, %Y')`"
-output: 
-  html_document:
-  toc: yes
-runtime: shiny
+output: html_document
 ---
 
 ## About
@@ -67,62 +64,7 @@ cap = paste0(
 To get information about the recent trends of college majors, I extracted the total number of people with majors in `all-ages.csv` and `recent-grads.csv` files and computed the proportion of recent graduates (ages < 28) with majors. The major Food Science had been removed because the variable Total showed NA value. 
 Since there is a total of 173 majors, it's hard to get insightful information form plotting 173 majors altogether. I decided to write a shiny app with two control widgets, the majors in various groups and the proportion of recent graduates with majors. With these two parameters, users can choose the desired major categories and the proportion to see.  <br />  
 
-
-```{r shiny app}
-# R shiny App
-# Define UI for dataset viewer app
-ui <- fluidPage(
-  sidebarLayout(
-    sidebarPanel(
-      # Input: Select major categories to show in the plot
-      checkboxGroupInput("ctg", "Major categories to show:",
-                         unique(all_ages$Major_category), 
-                         selected = unique(all_ages$Major_category)),
-      
-      # Create a line break
-      br(),
-      
-      # Input: Proportion interval with step value
-      sliderInput("prop", "Proportion:",
-                  min = 0, max = 1,
-                  value = 0.5, step = 0.05)
-    ),
-    mainPanel(
-      plotOutput("grad_barplot")  
-    )
-  )
-)
-
-# Define a server for shiny app
-server <- function(input, output) {
-  
-  datainput = reactive({
-    all = all_ages[, .(Major_code, Total)]
-    recent_grad[, .(Major_code, Major, Major_category, Total)] %>%
-      na.omit() %>%
-      merge(all, by = "Major_code", suffixes = c(".grad", ".all")) %>%
-      .[, prop_total := Total.grad / Total.all] %>%
-      .[ prop_total >= input$prop & Major_category %in% input$ctg, 
-         .(Major, Major_category, prop_total)] %>%
-      .[order(-prop_total)]
-  })
-  
-  output$grad_barplot = renderPlot({
-    datainput() %>%
-      arrange(prop_total) %>%
-      mutate( Major = factor(Major, levels = unique(Major)) ) %>%
-      as.data.frame() %>%
-      ggplot( aes_string( x = "Major", y = "prop_total", fill = "Major_category")) +
-      geom_bar( stat = "identity", width = .5) +
-      coord_flip() +
-      ylab('Percentage of recent graduates (ages < 28) in the majors')
-    
-  })
-}
-
-# Run the shiny app
-shinyApp(ui, server)
-```
+<iframe src ="https://mclu.shinyapps.io/shiny/" height=640px width=925px />
 
 <br /> 
 

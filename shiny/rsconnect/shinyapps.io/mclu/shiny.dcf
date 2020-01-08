@@ -1,0 +1,10 @@
+name: shiny
+title:
+username:
+account: mclu
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1638532
+bundleId: 2715502
+url: https://mclu.shinyapps.io/shiny/
+when: 1578524094.61849
