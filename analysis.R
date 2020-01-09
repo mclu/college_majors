@@ -1,4 +1,4 @@
-# Introductory Analyses of College Majors Dataset
+# Introductory Analyses of College Majors Dataset - Analysis
 #
 # This script is short data analysis for application of the Center for 
 # Academic Innovation's Data Science Fellowship.
@@ -147,7 +147,9 @@ diff_unemploy %>%
 
 cap = paste0(
   "**Figure 2.** *Mean differences of unemployment rate between recent ",
-  "graduates and all ages.* The figure shows that recent graduates of ",        "Industrial Arts & Consumer Services major category tend to find jobs ",      "easier compared to all ages, while Social Science major category is the ",
+  "graduates and all ages.* The figure shows that recent graduates of ",
+  "Industrial Arts & Consumer Services major category tend to find jobs ",
+  "easier compared to all ages, while Social Science major category is the ",
   "opposite."
 )
 
