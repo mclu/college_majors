@@ -66,7 +66,7 @@ To get information about the recent trends of college majors, I extracted the to
 Since there is a total of 173 majors, it's hard to get insightful information form plotting 173 majors altogether. I decided to write a shiny app with two control widgets, the majors in various groups and the proportion of recent graduates with majors. With these two parameters, users can choose the desired major categories and the proportion to see.  <br />  
 
 ```{r shiny app}
-# Define UI for dataset viewer app: --------------------------------------------
+# Define UI for dataset viewer app
 ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
@@ -89,7 +89,7 @@ ui <- fluidPage(
   )
 )
 
-# Define a server for shiny app: -----------------------------------------------
+# Define a server for shiny app
 server <- function(input, output) {
   
   datainput = reactive({
